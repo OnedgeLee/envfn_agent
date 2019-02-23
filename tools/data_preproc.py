@@ -37,13 +37,13 @@ def main():
         tool_fn.progress_bar(origin + 1, len(origins), prefix='>>> Extracting...')
 
 
-    striped_date = pd.Series(origin_df['Date/Time'].str.strip())
-    splited_date = pd.DataFrame(striped_date.str.split(r'[/  :]').tolist(), columns = ['Month', 'Day', '', 'Hour', '', ''])
-    splited_date = splited_date.drop([''], axis=1)
-    splited_date.reset_index(drop=True, inplace=True)
-    origin_df = origin_df.drop(['Date/Time'], axis=1)
-    origin_df.reset_index(drop=True, inplace=True)
-    origin_df = pd.concat([splited_date, origin_df], axis=1)
+    # striped_date = pd.Series(origin_df['Date/Time'].str.strip())
+    # splited_date = pd.DataFrame(striped_date.str.split(r'[/  :]').tolist(), columns = ['Month', 'Day', '', 'Hour', '', ''])
+    # splited_date = splited_date.drop([''], axis=1)
+    # splited_date.reset_index(drop=True, inplace=True)
+    # origin_df = origin_df.drop(['Date/Time'], axis=1)
+    # origin_df.reset_index(drop=True, inplace=True)
+    # origin_df = pd.concat([splited_date, origin_df], axis=1)
 
     if not os.path.exists(p_dic.get('preproc_data_dir')):
         os.makedirs(p_dic.get('preproc_data_dir'))

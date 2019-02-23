@@ -98,7 +98,7 @@ class PPO2(ActorCriticRLModel):
             assert issubclass(self.policy, ActorCriticPolicy), "Error: the input policy for the PPO2 model must be " \
                                                                "an instance of common.policies.ActorCriticPolicy."
 
-            self.n_batch = self.n_envs * self.n_steps
+            self.n_batch = self.n_envs * self.n_steps # update에 이용할 총 batch size
 
             n_cpu = multiprocessing.cpu_count()
             if sys.platform == 'darwin':
@@ -114,7 +114,7 @@ class PPO2(ActorCriticRLModel):
                     assert self.n_envs % self.nminibatches == 0, "For recurrent policies, "\
                         "the number of environments run in parallel should be a multiple of nminibatches."
                     n_batch_step = self.n_envs
-                    n_batch_train = self.n_batch // self.nminibatches
+                    n_batch_train = self.n_batch // self.nminibatches # 총 batch를 minibatches로 쪼갬
 
                 act_model = self.policy(self.sess, self.observation_space, self.action_space, self.n_envs, 1,
                                         n_batch_step, reuse=False, **self.policy_kwargs)
@@ -273,7 +273,7 @@ class PPO2(ActorCriticRLModel):
             ep_info_buf = deque(maxlen=100)
             t_first_start = time.time()
 
-            nupdates = total_timesteps // self.n_batch
+            nupdates = total_timesteps // self.n_batch # update 횟수 = 전체 timestep / batch size
             for update in range(1, nupdates + 1):
                 assert self.n_batch % self.nminibatches == 0
                 batch_size = self.n_batch // self.nminibatches
@@ -348,6 +348,9 @@ class PPO2(ActorCriticRLModel):
                     # compatibility with callbacks that have no return statement.
                     if callback(locals(), globals()) is False:
                         break
+                
+                with self.graph.as_default():
+                    tf_util.save_state(fname='./ckpt/ppo_'+str(update)+'.ckpt', sess=self.sess)
 
             return self
 
