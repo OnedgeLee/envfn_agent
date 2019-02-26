@@ -13,7 +13,7 @@ def predict_mlp_model(
 
     with slim.arg_scope(
         [slim.fully_connected],
-        activation_fn=tf.nn.relu,
+        activation_fn=tf.nn.elu,
         normalizer_fn=slim.batch_norm,
         normalizer_params={'is_training': is_training,'decay': batch_norm_decay},
         weights_regularizer=slim.l2_regularizer(l2_weight)
@@ -27,7 +27,7 @@ def predict_mlp_model(
 
         with slim.arg_scope(
             [slim.fully_connected],
-            activation_fn=tf.nn.sigmoid,
+            activation_fn=None,
             normalizer_fn=None
         ):
             predict = slim.fully_connected(net, predict_size, scope="fc_pred")

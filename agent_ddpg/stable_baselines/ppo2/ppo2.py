@@ -6,6 +6,7 @@ from collections import deque
 import gym
 import numpy as np
 import tensorflow as tf
+import datetime
 
 from stable_baselines import logger
 from stable_baselines.common import explained_variance, ActorCriticRLModel, tf_util, SetVerbosity, TensorboardWriter
@@ -44,11 +45,12 @@ class PPO2(ActorCriticRLModel):
     def __init__(self, policy, env, gamma=0.99, n_steps=128, ent_coef=0.01, learning_rate=2.5e-4, vf_coef=0.5,
                  max_grad_norm=0.5, lam=0.95, nminibatches=4, noptepochs=4, cliprange=0.2, verbose=0,
                  tensorboard_log=None, _init_setup_model=True, policy_kwargs=None,
-                 full_tensorboard_log=False):
+                 full_tensorboard_log=False, log_dir=''):
 
         super(PPO2, self).__init__(policy=policy, env=env, verbose=verbose, requires_vec_env=True,
                                    _init_setup_model=_init_setup_model, policy_kwargs=policy_kwargs)
 
+        self.log_dir = log_dir
         self.learning_rate = learning_rate
         self.cliprange = cliprange
         self.n_steps = n_steps
@@ -154,7 +156,7 @@ class PPO2(ActorCriticRLModel):
                     tf.summary.scalar('entropy_loss', self.entropy)
                     tf.summary.scalar('policy_gradient_loss', self.pg_loss)
                     tf.summary.scalar('value_function_loss', self.vf_loss)
-                    tf.summary.scalar('approximate_kullback-leiber', self.approxkl)
+                    tf.summary.scalar('approximate_kullback-leibler', self.approxkl)
                     tf.summary.scalar('clip_factor', self.clipfrac)
                     tf.summary.scalar('loss', loss)
 
@@ -350,7 +352,7 @@ class PPO2(ActorCriticRLModel):
                         break
                 
                 with self.graph.as_default():
-                    tf_util.save_state(fname='./ckpt/ppo_'+str(update)+'.ckpt', sess=self.sess)
+                    tf_util.save_state(fname=self.log_dir + '/' + datetime.datetime.now().strftime('%y%m%d-%H:%M:%S') + '_EP' + str(update) + '.ckpt', sess=self.sess)
 
             return self
 

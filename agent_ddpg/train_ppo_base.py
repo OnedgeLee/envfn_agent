@@ -21,6 +21,7 @@ from stable_baselines import PPO2
 
 import agent_ddpg
 import env
+import conf
 
 
 
@@ -30,6 +31,8 @@ tf.set_random_seed(1)
 FLAGS = None
 
 def main(_):
+
+    p_dic = getattr(conf.dic.path_dic, FLAGS.env_name)
     
     register(
         id=FLAGS.env_id,
@@ -51,7 +54,7 @@ def main(_):
     policy = {'cnn': CnnPolicy, 'lstm': CnnLstmPolicy, 'lnlstm': CnnLnLstmPolicy, 'mlp': MlpPolicy}[FLAGS.policy]
     model = PPO2(policy=policy, env=env, n_steps=FLAGS.n_steps, nminibatches=FLAGS.nminibatches,
                  lam=FLAGS.lam, gamma=FLAGS.gamma, noptepochs=FLAGS.noptepochs, ent_coef=FLAGS.ent_coef,
-                 learning_rate=FLAGS.learning_rate, cliprange=FLAGS.cliprange, verbose=FLAGS.verbose)
+                 learning_rate=FLAGS.learning_rate, cliprange=FLAGS.cliprange, verbose=FLAGS.verbose, log_dir=p_dic.get('agent_log_dir'))
     model.learn(total_timesteps=FLAGS.num_timesteps)
 
 if __name__ == '__main__':
@@ -64,7 +67,7 @@ if __name__ == '__main__':
                         help='(str) Environment name')
     parser.add_argument('--env_id', type=str, default='ep-v0',
                         help='(str) Environment id')
-    parser.add_argument('--num_timesteps', type=int, default=8760 * 30,
+    parser.add_argument('--num_timesteps', type=int, default=8760 * 100,
                         help='(int) The number of timesteps to run')
     parser.add_argument('--policy', choices=['cnn', 'lstm', 'lnlstm', 'mlp'], default='mlp',
                         help='(ActorCriticPolicy or str) The policy model to use (MlpPolicy, CnnPolicy, CnnLstmPolicy, ...)')
@@ -74,9 +77,9 @@ if __name__ == '__main__':
                         help='(int) Number of training minibatches per update. For recurrent policies, the number of environments run in parallel should be a multiple of nminibatches.')
     parser.add_argument('--lam', type=float, default=0.95,
                         help='(float) Factor for trade-off of bias vs variance for Generalized Advantage Estimator')
-    parser.add_argument('--gamma', type=float, default=0.99,
+    parser.add_argument('--gamma', type=float, default=0.5,
                         help='(float) Discount factor')
-    parser.add_argument('--noptepochs', type=int, default=4,
+    parser.add_argument('--noptepochs', type=int, default=24,
                         help='(int) Number of epoch when optimizing the surrogate')
     parser.add_argument('--ent_coef', type=float, default=.01,
                         help='(float) Entropy coefficient for the loss caculation')

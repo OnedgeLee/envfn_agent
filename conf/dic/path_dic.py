@@ -9,5 +9,5 @@ ep = {
     'ivs_data_dir': '/home/iglee/project/envfn_agent_rl/data/data_sampled/ivs',
     ## Energy Plus 관련 ##
     'idf_path': '/home/iglee/project/envfn_agent_rl/miscs/2ZoneDataCenterHVAC_wEconomizer_Temp_Fan_react.idf',
-    'eplog_dir': '/hdd/project/datacenter/rl/tmpeplog'
+    'eplog_dir': '/hdd/project/datacenter/rl/log/energyplus'
 }

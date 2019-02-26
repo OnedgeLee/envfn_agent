@@ -1,17 +1,11 @@
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-import tensorflow as tf
-import agent_ddpg
-from tensorflow.python.platform import app
-import numpy as np
-import conf
-from tools.pipe_io import PipeIo
-import subprocess
-import signal
-from tools.energyplus_env import EnergyPlusEnv
-import time
 
+import numpy as np
+
+import tensorflow as tf
+from tensorflow.python.platform import app
 
 import gym
 from gym.envs.registration import register
@@ -25,35 +19,20 @@ from stable_baselines.common.policies import CnnPolicy, CnnLstmPolicy, CnnLnLstm
 from stable_baselines.common import tf_util
 from stable_baselines import PPO2
 
-from env.env_ep import Env
+import agent_ddpg
+import env
+
+
 
 np.random.seed(1)
 tf.set_random_seed(1)
 
 FLAGS = None
 
-def normalize(original_feature, scale, translate):
-    return (original_feature - translate) / scale
-
-def restore(normalized_feature, scale, translate):
-    return normalized_feature * scale + translate
-
-
 def main(_):
-
-    p_dic = getattr(conf.dic.path_dic, FLAGS.env_name)
-
-    register(
-        id=FLAGS.env_id,
-        entry_point='env.env_ep:Env',
-        kwargs={
-            'env_name':FLAGS.env_name,
-            'done_step':8760
-            }
-    )
-
+    
     def make_env():
-        env_out = gym.make(FLAGS.env_id)
+        env_out = gym.make('CartPole-v0')
         env_out = bench.Monitor(env_out, logger.get_dir(), allow_early_resets=True)
         return env_out
 
@@ -64,42 +43,7 @@ def main(_):
     model = PPO2(policy=policy, env=env, n_steps=FLAGS.n_steps, nminibatches=FLAGS.nminibatches,
                  lam=FLAGS.lam, gamma=FLAGS.gamma, noptepochs=FLAGS.noptepochs, ent_coef=FLAGS.ent_coef,
                  learning_rate=FLAGS.learning_rate, cliprange=FLAGS.cliprange, verbose=FLAGS.verbose)
-    
-    with model.graph.as_default():
-        tf_util.load_state(fname=tf.train.latest_checkpoint(p_dic.get('agent_log_dir')), sess=model.sess)
-
-    epenv = EnergyPlusEnv(
-        energyplus_file="/usr/local/EnergyPlus-8-8-0/energyplus",
-        model_file=p_dic.get('idf_path'),
-        weather_file="/usr/local/EnergyPlus-8-8-0/WeatherData/USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
-        log_dir=p_dic.get('eplog_dir'))
-
-    os.environ['ENERGYPLUS'] = "/usr/local/EnergyPlus-8-8-0/energyplus"
-    os.environ['ENERGYPLUS_MODEL'] = p_dic.get('idf_path')
-    os.environ['ENERGYPLUS_WEATHER'] = "/usr/local/EnergyPlus-8-8-0/WeatherData/USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
-    os.environ['ENERGYPLUS_LOG'] = p_dic.get('eplog_dir')
-
-    epenv.start_instance()
-
-    def signal_handler(signal, frame):
-        epenv.stop_instance
-        print('=====Energy plus terminated=====')
-        print('==========Pipe closed==========')
-        sys.exit()
-
-    signal.signal(signal.SIGINT, signal_handler)
-    
-    state = epenv.reset()
-    env = Env('ep', 8760)
-    for i in range(10000000000000):
-        # state = np.array([[state[0], state[1], state[2], state[3], state[4], state[5], state[6], state[7], state[8]]])
-        state = np.array([[state[0], state[1], state[2], state[3], state[4], state[5]]])
-        action, _, _, _ = model.step(state)
-        action = env.set_action(action)
-        action = action.reshape([-1])
-        state, done = epenv.step(action)
-    epenv.stop_instance()
-
+    model.learn(total_timesteps=FLAGS.num_timesteps)
 
 if __name__ == '__main__':
     
@@ -117,7 +61,7 @@ if __name__ == '__main__':
                         help='(ActorCriticPolicy or str) The policy model to use (MlpPolicy, CnnPolicy, CnnLstmPolicy, ...)')
     parser.add_argument('--n_steps', type=int, default=8760,
                         help='(int) The number of steps to run for each environment per update')
-    parser.add_argument('--nminibatches', type=int, default=10,
+    parser.add_argument('--nminibatches', type=int, default=40,
                         help='(int) Number of training minibatches per update. For recurrent policies, the number of environments run in parallel should be a multiple of nminibatches.')
     parser.add_argument('--lam', type=float, default=0.95,
                         help='(float) Factor for trade-off of bias vs variance for Generalized Advantage Estimator')

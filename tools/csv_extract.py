@@ -39,14 +39,14 @@ def base_export():
 
     
     data = data.loc[data.index % 4 == 3].iloc[:]
-    data.to_csv('/hdd/project/datacenter/plot_re/csv' + '/base_ext.csv')
+    data.to_csv('/hdd/project/datacenter/rl/csv' + '/base_ext.csv')
 
 def agent_export():
 
     cols = ['east_temp', 'west_temp', 'total_hvac']
     column_name = [column_names[col] for col in cols]
 
-    eplusout_path = '/hdd/project/datacenter/bill/tmpeplog/output/episode'
+    eplusout_path = '/hdd/project/datacenter/rl/log/energyplus/output/episode'
 
     # data = select_columns_from_files(
     #     file_paths=[eplusout_path + '/eplusout_base.csv'],
@@ -58,7 +58,10 @@ def agent_export():
 
     
     data = data.loc[data.index % 4 == 3].iloc[:]
-    data.to_csv('/hdd/project/datacenter/bill/csv' + '/agent_bill_ext.csv')
+    data.to_csv('/hdd/project/datacenter/rl/csv' + '/agent_ext.csv')
 
-# base_export()
+if not os.path.exists('/hdd/project/datacenter/rl/csv'):
+    os.makedirs('/hdd/project/datacenter/rl/csv')
+    
+base_export()
 agent_export()
