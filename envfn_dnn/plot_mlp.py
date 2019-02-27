@@ -14,16 +14,6 @@ from tools import tool_fn
 
 FLAGS = None
 
-def data_preproc(data, translate, scale):
-
-    return (data - translate) / scale
-
-
-def data_transform(data, translate, scale):
-
-    return (data * scale) + translate
-
-
 def sample_open(sample_idxs, col_features, col_labels, p_dic):
     tool_fn.progress_bar(0, 1, prefix='>>> Sample extracting...')
     feature_samples = os.listdir(p_dic.get('sample_data_dir') + '/feature')
@@ -62,12 +52,14 @@ def main(_):
     p_dic = getattr(conf.dic.path_dic, FLAGS.env_name)
     c_dic = getattr(conf.dic.col_dic, FLAGS.env_name)
     m_dic = getattr(conf.dic.envfn_dic, FLAGS.env_name)
+    s_dic = getattr(conf.dic.space_dic, FLAGS.env_name)
     cols = {
         'envfn_f': getattr(conf.list.envfn.feature, FLAGS.env_name),
         'envfn_l': getattr(conf.list.envfn.label, FLAGS.env_name)
     }
     col_features = [c_dic[col_feature] for col_feature in cols.get('envfn_f')]
     col_labels = [c_dic[col_label] for col_label in cols.get('envfn_l')]
+    l_space = np.array([s_dic[col_label] for col_label in cols.get('envfn_l')], dtype=np.float32).T
 
     predict_data = sample_open(FLAGS.sample_idxs, col_features, col_labels, p_dic)
     data_length = predict_data[0].shape[0]
@@ -87,22 +79,9 @@ def main(_):
             next_batch = iterator.get_next()
             feature_batch, label_batch = next_batch
 
-            feature_translate_restore = tf.get_variable(
-                'feature_translate_save', shape=[1, feature_batch.shape[1]], trainable=False)
-            feature_scale_restore = tf.get_variable(
-                'feature_scale_save', shape=[1, feature_batch.shape[1]], trainable=False)
-            label_translate_restore = tf.get_variable(
-                'label_translate_save', shape=[1, label_batch.shape[1]], trainable=False)
-            label_scale_restore = tf.get_variable(
-                'label_scale_save', shape=[1, label_batch.shape[1]], trainable=False)
-
-            preproc_feature_batch = data_preproc(
-                feature_batch, feature_translate_restore, feature_scale_restore)
-            prediction_intermediate_batch = model.predict_model(
-                preproc_feature_batch, is_training=False)
-            prediction_batch = data_transform(
-                prediction_intermediate_batch, label_translate_restore, label_scale_restore)
-
+            prediction_batch = model.predict_model(
+                feature_batch, is_training=False)
+            
             num_batches = math.ceil(
                 data_length * len(FLAGS.sample_idxs) / float(FLAGS.batch_size))
 
@@ -127,6 +106,10 @@ def main(_):
                         label_stack = np.concatenate((label_stack, labels))
                         prediction_stack = np.concatenate(
                             (prediction_stack, predictions))
+
+            
+                label_stack = tool_fn.transform(label_stack, l_space[0], l_space[1])
+                prediction_stack = tool_fn.transform(prediction_stack, l_space[0], l_space[1])
 
                 indexing = np.arange(data_length)
 

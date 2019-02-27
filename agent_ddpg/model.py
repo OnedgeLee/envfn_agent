@@ -29,12 +29,6 @@ class DDPG:
         if self.rl_mode:
             self.memory = Memory(self.FLAGS.replayBuffer_size, dims=2 * self.s_dim + self.a_dim + 1)
 
-    def normalize(self, original_feature, scale, translate):
-        return (original_feature - translate) / scale
-
-    def restore(self, normalized_feature, scale, translate):
-        return normalized_feature * scale + translate
-
     def _build_graph(self):
         self._placehoders()
         self._actor_critic()
@@ -142,9 +136,6 @@ class DDPG:
 
 
     def load(self):
-        # self.saver.restore(self.sess, self.p_dic.get('agent_log_dir') + '/190130-15:35:26_EP1.ckpt')
-        # self.saver.restore(self.sess, self.p_dic.get('agent_log_dir') + '/190130-16:42:17_EP30.ckpt')
-        # self.saver.restore(self.sess, self.p_dic.get('agent_log_dir') + '/190130-14:59:11_EP40.ckpt')
         self.saver.restore(self.sess, tf.train.latest_checkpoint(self.p_dic.get('agent_log_dir')))
         
     def act(self, obs):
@@ -162,7 +153,6 @@ def learn(FLAGS, env, agent):
     print('\n\n>> Agent training start')
     for e in range(FLAGS.num_episodes):
         obs = env.reset()
-        obs = agent.normalize(obs, agent.state_scale, agent.state_translate)
         ep_reward = 0
         # rss : 추후 env 쪽으로 넘김
         # env에 epsode_render 메서드 만들어서 거기에 포함
@@ -172,12 +162,11 @@ def learn(FLAGS, env, agent):
             if render:
                 env.render()
             action = agent.choose_action(obs)
-            action = agent.restore(action, agent.action_scale, agent.action_translate)
             action = np.random.normal(loc=action, scale=sd)
             action = np.clip(action, env.action_space.low, env.action_space.high)
-            next_obs, reward, done, info = env.step(action)
-            next_obs = agent.normalize(next_obs, agent.state_scale, agent.state_translate)
-            action = agent.normalize(action, agent.action_scale, agent.action_translate)
+            next_obs, reward, done, info = env.step(action[0])
+            next_obs = np.expand_dims(next_obs, axis=0)
+            reward = np.expand_dims(reward, axis=0)
             # rss : 추후 env 쪽으로 넘김
             if hasattr(env, 'envfn'):
                 rss.append(env.rs.reshape(-1))

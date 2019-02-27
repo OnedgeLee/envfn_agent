@@ -15,7 +15,7 @@ def main(_):
     sess_config = tf.ConfigProto(allow_soft_placement=True)
     sess_config.gpu_options.allow_growth = True
     sess = tf.Session(config=sess_config)
-    env = agent_ddpg.env.Env(FLAGS.env_name)
+    env = agent_ddpg.env.env_ep.Env(FLAGS.env_name, 8760)
     agent = agent_ddpg.model.DDPG(sess, env, FLAGS, rl_mode=True)
     agent_ddpg.model.learn(FLAGS, env, agent)
 

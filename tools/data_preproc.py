@@ -13,8 +13,11 @@ def main():
 
     p_dic = getattr(conf.dic.path_dic, FLAGS.env_name)
     c_dic = getattr(conf.dic.col_dic, FLAGS.env_name)
+    s_dic = getattr(conf.dic.space_dic, FLAGS.env_name)
+
     cols = {
-        'ORIGIN_F': getattr(conf.list.preproc.origin, FLAGS.env_name)
+        'ORIGIN_F': getattr(conf.list.preproc.origin, FLAGS.env_name),
+        'PREPROC_F': getattr(conf.list.preproc.preproc, FLAGS.env_name)
     }
     origin_f = [c_dic[feature] for feature in cols.get('ORIGIN_F')]
     origins = os.listdir(p_dic.get('origin_data_dir'))
@@ -37,13 +40,13 @@ def main():
         tool_fn.progress_bar(origin + 1, len(origins), prefix='>>> Extracting...')
 
 
-    # striped_date = pd.Series(origin_df['Date/Time'].str.strip())
-    # splited_date = pd.DataFrame(striped_date.str.split(r'[/  :]').tolist(), columns = ['Month', 'Day', '', 'Hour', '', ''])
-    # splited_date = splited_date.drop([''], axis=1)
-    # splited_date.reset_index(drop=True, inplace=True)
-    # origin_df = origin_df.drop(['Date/Time'], axis=1)
-    # origin_df.reset_index(drop=True, inplace=True)
-    # origin_df = pd.concat([splited_date, origin_df], axis=1)
+    striped_date = pd.Series(origin_df['Date/Time'].str.strip())
+    splited_date = pd.DataFrame(striped_date.str.split(r'[/  :]').tolist(), columns = ['Month', 'Day', '', 'Hour', '', ''])
+    splited_date = splited_date.drop([''], axis=1)
+    splited_date.reset_index(drop=True, inplace=True)
+    origin_df = origin_df.drop(['Date/Time'], axis=1)
+    origin_df.reset_index(drop=True, inplace=True)
+    origin_df = pd.concat([splited_date, origin_df], axis=1)
 
     if not os.path.exists(p_dic.get('preproc_data_dir')):
         os.makedirs(p_dic.get('preproc_data_dir'))
@@ -51,10 +54,12 @@ def main():
     print('Preprocess to dir: ' + p_dic.get('preproc_data_dir'))
     tool_fn.progress_bar(0, 1, prefix='>>> Preprocessing...')
 
+    f_space = np.array([s_dic[feature] for feature in cols.get('PREPROC_F')], dtype=np.float32).T
     origin_df_size = origin_df.shape[0]
     for split in range(FLAGS.frac_num):
 
-        preprocessed_df = origin_df.head(np.ceil(origin_df_size / FLAGS.frac_num).astype(int))
+        preprocessed_df = origin_df.head(np.ceil(origin_df_size / FLAGS.frac_num).astype(int)).apply(pd.to_numeric)
+        preprocessed_df = tool_fn.normalize(preprocessed_df, f_space[0], f_space[1])
         origin_df.drop(preprocessed_df.index)
         preprocessed_df.to_csv(p_dic.get('preproc_data_dir') + '/' + FLAGS.preproc_name + '_' + str(split) + '.csv')
 

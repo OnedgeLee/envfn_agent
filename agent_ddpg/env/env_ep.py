@@ -9,6 +9,7 @@ import envfn_dnn
 import conf
 import gym
 from gym import spaces
+from tools import tool_fn
 
 class Env(gym.Env):
     metadata = {'render.modes': ['human']}
@@ -19,6 +20,7 @@ class Env(gym.Env):
 
         self.p_dic = getattr(conf.dic.path_dic, env_name)
         self.c_dic = getattr(conf.dic.col_dic, env_name)
+        self.s_dic = getattr(conf.dic.space_dic, env_name)
         self.cols = {
             'agent_a': getattr(conf.list.agent.action, env_name),
             'agent_dvs': getattr(conf.list.agent.dv_state, env_name),
@@ -27,6 +29,9 @@ class Env(gym.Env):
             'envfn_f': getattr(conf.list.envfn.feature, env_name),
             'envfn_l': getattr(conf.list.envfn.label, env_name),
         }
+        self.act_space = np.array([self.s_dic[acts] for acts in self.cols.get('agent_a')], dtype=np.float32).T
+        self.obs_space = np.array([self.s_dic[obss] for obss in self.cols.get('agent_dvs')+self.cols.get('agent_ivs')], dtype=np.float32).T
+        self.rew_space = np.array([self.s_dic[sts] for sts in self.cols.get('agent_rs' )], dtype=np.float32).T
         self.rew_fn = getattr(conf.fn.agent.env_rew_fn, env_name)
         self.init_fn = getattr(conf.fn.agent.env_init_fn, env_name)
         self.rst_fn = getattr(conf.fn.agent.env_rst_fn, env_name)
@@ -55,8 +60,6 @@ class Env(gym.Env):
         self.spec = None
         self.done_step = done_step
 
-    def reset(self):
-
         ivsss = os.listdir(self.p_dic.get('ivs_data_dir'))
         ivsss.sort()
         ivss_df = None
@@ -69,6 +72,8 @@ class Env(gym.Env):
             else:
                 ivss_df = pd.concat[ivss_df, ivss_df_part]
         self.ivss = ivss_df.values
+
+    def reset(self):
 
         rst = self.rst_fn()
         self.dvs = np.expand_dims(rst, axis=0)
@@ -89,9 +94,14 @@ class Env(gym.Env):
 
     def step(self, act_norm):
         self.timesteps += 1
+
+        if (self.timesteps) == self.done_step:
+            done = np.array([True], dtype=np.bool)
+        else:
+            done = np.array([False], dtype=np.bool)
         
-        # self.act = np.expand_dims(action, axis=0)
-        self.act = self.set_action(act_norm)
+        self.act = np.expand_dims(act_norm, axis=0)
+        # self.act = self.set_action(act_norm)
         batch_size = self.act.shape[0]
 
         self.whole_data = pd.DataFrame(
@@ -103,19 +113,18 @@ class Env(gym.Env):
         self.dvs = self.ive.predict(self.envfn_f)
         self.ivs = self.ivss[(((self.timesteps % self.ivss.shape[0]) - 1) * batch_size):(self.timesteps % self.ivss.shape[0]) * batch_size]
         self.obs = np.concatenate([self.dvs, self.ivs], axis=1)
-        self.rs = self.whole_data[self.cols.get('agent_rs' )].values
-        self.rew = self.rew_fn(self.rs)
 
-        
+        # if np.all([self.obs_space[0] < self.obs, self.obs < self.obs_space[1]]):
+        self.rs = self.whole_data[self.cols.get('agent_rs' )].values
+        self.rs = tool_fn.transform(self.rs, self.rew_space[0], self.rew_space[1])
+        self.rew = self.rew_fn(self.rs)
+        # else:
+            # done = np.array([True], dtype=np.bool)
+            # self.rew = [-100]
 
         next_obs = self.obs
         reward = self.rew
         
-        if (self.timesteps) == self.done_step:
-            done = np.array([True], dtype=np.bool)
-        else:
-            done = np.array([False], dtype=np.bool)
-
         info = {}
 
         return next_obs[0], reward[0], done, info

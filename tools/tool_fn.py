@@ -7,3 +7,9 @@ def progress_bar(current, total, prefix='', suffix='', decimals=1, length=20, ba
     print('\r%s [%s] %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
     if current == total: 
         print()
+
+def normalize(data, space_min, space_max):
+    return (data - space_min) / (space_max - space_min + 1e-6)
+
+def transform(data, space_min, space_max):
+    return data * (space_max - space_min) + space_min

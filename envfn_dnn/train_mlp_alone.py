@@ -12,6 +12,32 @@ from tools import tool_fn
 
 FLAGS = None
 
+def data_stdize(data):
+
+    mean = tf.reduce_mean(data, 0, True)
+    std = tf.reduce_mean(tf.square(data - mean), 0, True)
+
+    translate = mean
+    scale = (std + 1e-5)
+    
+    outputs = (data - translate) / scale
+
+    return outputs, translate, scale
+
+
+def data_normalize(data):
+
+    high = tf.reduce_max(data, 0, True)
+    low = tf.reduce_min(data, 0, True)
+
+    translate = low
+    scale = (high - low + 1e-5)
+
+    outputs = (data - translate) / scale
+
+    return outputs, translate, scale
+
+
 def sample_open(sample_idxs, col_features, col_labels, p_dic):
     tool_fn.progress_bar(0, 1, prefix='>>> Sample extracting...')
     feature_samples = os.listdir(p_dic.get('sample_data_dir') + '/feature')
@@ -68,8 +94,36 @@ def main(_):
             model_function = partial(architecture, predict_size=len(col_labels), l2_weight=FLAGS.l2_weight, batch_norm_decay=FLAGS.batch_norm_decay)
             model = envfn_dnn.model.MlpModel(model_function)
 
+            if m_dic.get('preproc') == 'std':
+                
+                feature, feature_translate, feature_scale = data_stdize(train_data[0])
+                label, label_translate, label_scale = data_stdize(train_data[1])
+                
+            elif m_dic.get('preproc') == 'norm':
+
+                feature, feature_translate, feature_scale = data_normalize(train_data[0])
+                label, label_translate, label_scale = data_normalize(train_data[1])
+
+            feature_translate_save = tf.get_variable(
+                'feature_translate_save', shape=[1, feature.shape[1]])
+            feature_scale_save = tf.get_variable(
+                'feature_scale_save', shape=[1, feature.shape[1]])
+            feature_translate_assign = feature_translate_save.assign(feature_translate)
+            feature_scale_assign = feature_scale_save.assign(feature_scale)
+            tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, feature_translate_assign)
+            tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, feature_scale_assign)
+            
+            label_translate_save = tf.get_variable(
+                'label_translate_save', shape=[1, label.shape[1]])
+            label_scale_save = tf.get_variable(
+                'label_scale_save', shape=[1, label.shape[1]])
+            label_translate_assign = label_translate_save.assign(label_translate)
+            label_scale_assign = label_scale_save.assign(label_scale)
+            tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, label_translate_assign)
+            tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, label_scale_assign)
+
             batch = shuffle_n_batch(
-                (train_data[0], train_data[1]), data_length)
+                (feature, label), data_length)
 
             iterator = batch.make_one_shot_iterator()
             feature_batch, label_batch = iterator.get_next()

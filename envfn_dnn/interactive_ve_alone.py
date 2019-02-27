@@ -20,6 +20,12 @@ class IVE():
         self.f_dim = len(getattr(conf.list.envfn.feature, env_name))
         self.l_dim = len(getattr(conf.list.envfn.label, env_name))
 
+    def data_preproc(self, data, translate, scale):
+        return (data - translate) / scale
+
+    def data_transform(self, data, translate, scale):
+        return (data * scale) + translate
+
     def load(self):
 
         self.g_envfn = tf.Graph()
@@ -30,8 +36,20 @@ class IVE():
             model_function = partial(architecture, predict_size=self.l_dim)
             self.model = envfn_dnn.model.MlpModel(model_function)
 
+            self.feature_translate_restore = tf.get_variable(
+                'feature_translate_save', shape=[1, self.f_dim], trainable=False)
+            self.feature_scale_restore = tf.get_variable(
+                'feature_scale_save', shape=[1, self.f_dim], trainable=False)
+            self.label_translate_restore = tf.get_variable(
+                'label_translate_save', shape=[1, self.l_dim], trainable=False)
+            self.label_scale_restore = tf.get_variable(
+                'label_scale_save', shape=[1, self.l_dim], trainable=False)
+            
             self.inputs = tf.placeholder(dtype=tf.float32, shape=[None, self.f_dim])
-            self.prediction = self.model.predict_model(self.inputs, is_training=False)
+            preproc_data = self.data_preproc(self.inputs, self.feature_translate_restore, self.feature_scale_restore)
+            prediction_intermediate = self.model.predict_model(preproc_data, is_training=False)
+            self.prediction = self.data_transform(prediction_intermediate, self.label_translate_restore, self.label_scale_restore)
+            
             self.saver = tf.train.Saver()
             sess_config = tf.ConfigProto(allow_soft_placement=True)
             sess_config.gpu_options.allow_growth = True

@@ -1,4 +1,5 @@
 import numpy as np
+import conf
 
 def ep(rew_state):
 
@@ -11,10 +12,14 @@ def ep(rew_state):
     # month = rew_state[:,0]
     # day = rew_state[:,1]
     # hour = rew_state[:,2]
-    east_temp = rew_state[:,3]
-    west_temp = rew_state[:,4]
-    total_hvac = rew_state[:,5]
-    action = rew_state[:,6:10]
+    # east_temp = rew_state[:,3]
+    # west_temp = rew_state[:,4]
+    # total_hvac = rew_state[:,5]
+    # action = rew_state[:,6:10]
+    east_temp = rew_state[:,0]
+    west_temp = rew_state[:,1]
+    total_hvac = rew_state[:,2]
+    action = rew_state[:,3:7]
 
     if east_temp < temp_min:
         rew_east_temp = (-east_temp + temp_min) * (-temp_weight)
